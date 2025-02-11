@@ -16,13 +16,14 @@ MODEL_PATH_AR = "vosk-model-ar"
 MODEL_PATH_FR = "vosk-model-fr"
 
 def download_from_google_drive(file_id, destination):
-    """Download a large file from Google Drive."""
+    """Download a large file from Google Drive properly (handles confirmation token)."""
     URL = "https://docs.google.com/uc?export=download"
 
     session = requests.Session()
     response = session.get(URL, params={"id": file_id}, stream=True)
+    
+    # Handle Google Drive large file confirmation token
     token = None
-
     for key, value in response.cookies.items():
         if key.startswith("download_warning"):
             token = value
@@ -31,8 +32,9 @@ def download_from_google_drive(file_id, destination):
     if token:
         response = session.get(URL, params={"id": file_id, "confirm": token}, stream=True)
 
+    # Write the file to destination
     with open(destination, "wb") as f:
-        for chunk in response.iter_content(chunk_size=1024):
+        for chunk in response.iter_content(chunk_size=1024 * 1024):  # 1MB chunks
             if chunk:
                 f.write(chunk)
 
