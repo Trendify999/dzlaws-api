@@ -1,65 +1,65 @@
 import os
 import requests
+import zipfile
+import wave
+import json
 from flask import Flask, request, jsonify
-from flask_cors import CORS
-from dotenv import load_dotenv
+from vosk import Model, KaldiRecognizer
 
-# Load environment variables
-load_dotenv("C:/value.env")
+# Vosk Model Configuration
+VOSK_MODEL_URL = "https://alphacephei.com/vosk/models/vosk-model-ar-0.22.zip"
+MODEL_PATH = "vosk-model-ar"
 
+def download_vosk_model():
+    """Download and extract Vosk model if not already present."""
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading Vosk Arabic model... ⏳")
+        response = requests.get(VOSK_MODEL_URL, stream=True)
+        with open("vosk-model.zip", "wb") as f:
+            for chunk in response.iter_content(chunk_size=1024):
+                f.write(chunk)
+
+        print("Extracting model... ⏳")
+        with zipfile.ZipFile("vosk-model.zip", "r") as zip_ref:
+            zip_ref.extractall(".")
+
+        os.rename("vosk-model-ar-0.22", MODEL_PATH)
+        os.remove("vosk-model.zip")
+        print("Vosk model ready! ✅")
+
+# Download the model at server startup
+download_vosk_model()
+
+# Initialize Flask App
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allows all external requests
 
-# Enforce HTTPS when behind Cloudflare Flexible SSL
-@app.before_request
-def before_request():
-    """Force HTTPS when behind Cloudflare Flexible SSL"""
-    if request.headers.get("X-Forwarded-Proto") == "http":
-        return "Redirecting to HTTPS", 301
+# Load Vosk Model
+model = Model(MODEL_PATH)
 
-# Load Gemini API Key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-
-# Check if API Key is Loaded
-if not GEMINI_API_KEY:
-    raise ValueError("❌ ERROR: Missing GEMINI_API_KEY. Please add it to your .env file.")
-
-# ✅ Homepage Route (Fix for 'Not Found' issue)
-@app.route("/")
-def home():
-    return "<h1>Welcome to Algerian AI Lawyer</h1>"
-
-# ✅ Test Route to Confirm API Works
-@app.route("/test")
+@app.route("/test", methods=["GET"])
 def test():
-    return "This is a test route!"
+    return "✅ Vosk-powered API is running!"
 
-# ✅ Ensure This Route Exists with GET & POST Support
-@app.route("/gemini-api", methods=["POST", "GET"])
-def gemini_api():
-    if request.method == "GET":
-        return jsonify({"message": "✅ API is working! Use POST to send data."})
-    
-    data = request.json
-    prompt = data.get("prompt", "")
+@app.route("/voice-to-text", methods=["POST"])
+def voice_to_text():
+    """Process uploaded audio and return transcribed text."""
+    if "audio" not in request.files:
+        return jsonify({"error": "No audio file uploaded"}), 400
 
-    headers = {"Content-Type": "application/json"}
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    audio_file = request.files["audio"]
+    wf = wave.open(audio_file, "rb")
 
-    try:
-        response = requests.post(GEMINI_API_URL, json=payload, headers=headers)
-        response_json = response.json()
+    if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
+        return jsonify({"error": "Invalid audio format"}), 400
 
-        print("DEBUG: API Response:", response_json)  # Debugging line
+    rec = KaldiRecognizer(model, wf.getframerate())
+    data = wf.readframes(wf.getnframes())
 
-        if response.status_code == 200:
-            return jsonify(response_json)
-        else:
-            return jsonify({"error": f"Gemini API error {response.status_code}: {response_json}"}), response.status_code
-
-    except Exception as e:
-        return jsonify({"error": f"Request failed: {str(e)}"}), 500
+    if rec.AcceptWaveform(data):
+        result = json.loads(rec.Result())
+        return jsonify({"text": result.get("text", "")})
+    else:
+        return jsonify({"error": "Could not process audio"}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
