@@ -5,7 +5,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv("C:/value.env")
+load_dotenv("value.env")
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allows all external requests
@@ -23,7 +23,7 @@ DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 
 # Check if API Key is Loaded
 if not DEEPSEEK_API_KEY:
-    raise ValueError("❌ ERROR: Missing DEEPSEEK_API_KEY. Please add it to your .env file.")
+    raise ValueError("❌ ERROR: Missing DEEPSEEK_API_KEY. Please add it to value.env in Git.")
 
 # ✅ Homepage Route (Fix for 'Not Found' issue)
 @app.route("/")
