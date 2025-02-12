@@ -6,3 +6,4 @@ gunicorn
 vosk
 sounddevice
 numpy
+pymongo==4.6.1
