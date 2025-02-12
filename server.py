@@ -10,7 +10,7 @@ from pymongo import MongoClient
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Allows all external requests
+CORS(app)  # Allows all external origins, methods, and headers
 
 # Enforce HTTPS when behind Cloudflare Flexible SSL
 @app.before_request
@@ -36,6 +36,9 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 # Check if API Key is Loaded
 if not GEMINI_API_KEY:
     raise ValueError("❌ ERROR: Missing GEMINI_API_KEY. Please add it to your environment variables.")
+
+# Debugging: Print API Key partially (only for deployment testing, remove in production)
+print(f"🔍 DEBUG: Loaded GEMINI_API_KEY: {GEMINI_API_KEY[:5]}*****")
 
 # ✅ Homepage Route
 @app.route("/")
