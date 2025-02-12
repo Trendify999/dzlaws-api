@@ -17,9 +17,9 @@ def before_request():
     if request.headers.get("X-Forwarded-Proto") == "http":
         return "Redirecting to HTTPS", 301
 
-# Load Gemini API Key
+# Load OpenRouter API Key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
+GEMINI_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Check if API Key is Loaded
 if not GEMINI_API_KEY:
@@ -28,7 +28,7 @@ if not GEMINI_API_KEY:
 # ✅ Homepage Route (Fix for 'Not Found' issue)
 @app.route("/")
 def home():
-    return "<h1>Welcome to Algerian AI Lawyer</h1>"
+    return "<h1>Welcome to Algerian AI Lawyer - Powered by OpenRouter Gemini</h1>"
 
 # ✅ Test Route to Confirm API Works
 @app.route("/test")
@@ -39,24 +39,29 @@ def test():
 @app.route("/gemini-api", methods=["POST", "GET"])
 def gemini_api():
     if request.method == "GET":
-        return jsonify({"message": "✅ API is working! Use POST to send data."})
-    
+        return jsonify({"message": "✅ OpenRouter Gemini API is working! Use POST to send data."})
+
     data = request.json
     prompt = data.get("prompt", "")
 
-    headers = {"Content-Type": "application/json"}
-    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {GEMINI_API_KEY}"
+    }
+
+    payload = {
+        "model": "google/gemini-2.0-pro-exp-02-05:free",
+        "messages": [{"role": "user", "content": prompt}]
+    }
 
     try:
         response = requests.post(GEMINI_API_URL, json=payload, headers=headers)
         response_json = response.json()
 
-        print("DEBUG: API Response:", response_json)  # Debugging line
-
         if response.status_code == 200:
             return jsonify(response_json)
         else:
-            return jsonify({"error": f"Gemini API error {response.status_code}: {response_json}"}), response.status_code
+            return jsonify({"error": f"OpenRouter API error {response.status_code}: {response_json}"}), response.status_code
 
     except Exception as e:
         return jsonify({"error": f"Request failed: {str(e)}"}), 500
