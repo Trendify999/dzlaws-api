@@ -18,29 +18,29 @@ def before_request():
     if request.headers.get("X-Forwarded-Proto") == "http":
         return "Redirecting to HTTPS", 301
 
-# Load OpenRouter API Key
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Load OpenAI API Key
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 
 # Check if API Key is Loaded
-if not OPENROUTER_API_KEY:
-    raise ValueError("❌ ERROR: Missing OPENROUTER_API_KEY. Please add it to your environment variables.")
+if not OPENAI_API_KEY:
+    raise ValueError("❌ ERROR: Missing OPENAI_API_KEY. Please add it to your environment variables.")
 
 # ✅ Homepage Route
 @app.route("/")
 def home():
-    return "<h1>Welcome to Algerian AI Lawyer - Powered by OpenRouter Gemini</h1>"
+    return "<h1>Welcome to Algerian AI Lawyer - Powered by OpenAI GPT</h1>"
 
 # ✅ Test Route to Confirm API Works
 @app.route("/test")
 def test():
     return "This is a test route!"
 
-# ✅ OpenRouter AI Route
-@app.route("/openrouter-api", methods=["POST", "GET"])
-def openrouter_api():
+# ✅ OpenAI GPT Route
+@app.route("/openai-api", methods=["POST", "GET"])
+def openai_api():
     if request.method == "GET":
-        return jsonify({"message": "✅ OpenRouter API is working! Use POST to send data."})
+        return jsonify({"message": "✅ OpenAI API is working! Use POST to send data."})
 
     data = request.json
     prompt = data.get("prompt", "")
@@ -50,24 +50,22 @@ def openrouter_api():
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "https://dzlaws.org",  # Optional
-        "X-Title": "Algerian AI Lawyer"  # Optional
+        "Authorization": f"Bearer {OPENAI_API_KEY}"
     }
 
     payload = {
-        "model": "openai/gpt-4o",  # Using OpenRouter's model
+        "model": "gpt-4",
         "messages": [{"role": "user", "content": prompt}]
     }
 
     try:
-        response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload)
+        response = requests.post(OPENAI_API_URL, headers=headers, json=payload)
         response_json = response.json()
 
         if response.status_code == 200:
             return jsonify(response_json)
         else:
-            return jsonify({"error": f"OpenRouter API error {response.status_code}: {response_json}"}), response.status_code
+            return jsonify({"error": f"OpenAI API error {response.status_code}: {response_json}"}), response.status_code
 
     except Exception as e:
         return jsonify({"error": f"Request failed: {str(e)}"}), 500
