@@ -4,6 +4,7 @@ import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 # Load environment variables
 load_dotenv()
@@ -18,29 +19,39 @@ def before_request():
     if request.headers.get("X-Forwarded-Proto") == "http":
         return "Redirecting to HTTPS", 301
 
-# Load OpenAI API Key
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
+# Load MongoDB Connection
+MONGO_USER = os.getenv("MONGO_USER")
+MONGO_PASSWORD = os.getenv("MONGO_PASSWORD")
+MONGO_HOST = os.getenv("MONGO_HOST")
+MONGO_DB = os.getenv("MONGO_DB")
+
+mongo_uri = f"mongodb+srv://{MONGO_USER}:{MONGO_PASSWORD}@{MONGO_HOST}/{MONGO_DB}?retryWrites=true&w=majority"
+client = MongoClient(mongo_uri)
+db = client[MONGO_DB]
+
+# Load Gemini API Key
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=" + GEMINI_API_KEY
 
 # Check if API Key is Loaded
-if not OPENAI_API_KEY:
-    raise ValueError("❌ ERROR: Missing OPENAI_API_KEY. Please add it to your environment variables.")
+if not GEMINI_API_KEY:
+    raise ValueError("❌ ERROR: Missing GEMINI_API_KEY. Please add it to your environment variables.")
 
 # ✅ Homepage Route
 @app.route("/")
 def home():
-    return "<h1>Welcome to Algerian AI Lawyer - Powered by OpenAI GPT</h1>"
+    return "<h1>Welcome to Algerian AI Lawyer - Powered by Gemini & MongoDB</h1>"
 
 # ✅ Test Route to Confirm API Works
 @app.route("/test")
 def test():
     return "This is a test route!"
 
-# ✅ OpenAI GPT Route
-@app.route("/openai-api", methods=["POST", "GET"])
-def openai_api():
+# ✅ Gemini API Route
+@app.route("/gemini-api", methods=["POST", "GET"])
+def gemini_api():
     if request.method == "GET":
-        return jsonify({"message": "✅ OpenAI API is working! Use POST to send data."})
+        return jsonify({"message": "✅ Gemini API is working! Use POST to send data."})
 
     data = request.json
     prompt = data.get("prompt", "")
@@ -48,24 +59,17 @@ def openai_api():
     if not prompt:
         return jsonify({"error": "❌ Missing 'prompt' field in request body."}), 400
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {OPENAI_API_KEY}"
-    }
-
-    payload = {
-        "model": "gpt-4",
-        "messages": [{"role": "user", "content": prompt}]
-    }
+    headers = {"Content-Type": "application/json"}
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
     try:
-        response = requests.post(OPENAI_API_URL, headers=headers, json=payload)
+        response = requests.post(GEMINI_API_URL, headers=headers, json=payload)
         response_json = response.json()
 
         if response.status_code == 200:
             return jsonify(response_json)
         else:
-            return jsonify({"error": f"OpenAI API error {response.status_code}: {response_json}"}), response.status_code
+            return jsonify({"error": f"Gemini API error {response.status_code}: {response_json}"}), response.status_code
 
     except Exception as e:
         return jsonify({"error": f"Request failed: {str(e)}"}), 500
