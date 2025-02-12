@@ -6,7 +6,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv("C:/value.env")
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})  # Allows all external requests
@@ -19,14 +19,14 @@ def before_request():
         return "Redirecting to HTTPS", 301
 
 # Load OpenRouter API Key
-OPENROUTER_API_KEY = os.getenv("GEMINI_API_KEY")  # Using the same env variable name
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Check if API Key is Loaded
 if not OPENROUTER_API_KEY:
-    raise ValueError("❌ ERROR: Missing OPENROUTER_API_KEY. Please add it to your .env file.")
+    raise ValueError("❌ ERROR: Missing OPENROUTER_API_KEY. Please add it to your environment variables.")
 
-# ✅ Homepage Route (Fix for 'Not Found' issue)
+# ✅ Homepage Route
 @app.route("/")
 def home():
     return "<h1>Welcome to Algerian AI Lawyer - Powered by OpenRouter Gemini</h1>"
@@ -36,7 +36,7 @@ def home():
 def test():
     return "This is a test route!"
 
-# ✅ OpenRouter AI Route (Fixing Not Found Issue)
+# ✅ OpenRouter AI Route
 @app.route("/openrouter-api", methods=["POST", "GET"])
 def openrouter_api():
     if request.method == "GET":
@@ -45,15 +45,18 @@ def openrouter_api():
     data = request.json
     prompt = data.get("prompt", "")
 
+    if not prompt:
+        return jsonify({"error": "❌ Missing 'prompt' field in request body."}), 400
+
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "HTTP-Referer": "https://yourwebsite.com",  # Optional
+        "HTTP-Referer": "https://dzlaws.org",  # Optional
         "X-Title": "Algerian AI Lawyer"  # Optional
     }
 
     payload = {
-        "model": "openai/gpt-4o",  # Use OpenRouter's correct model ID
+        "model": "openai/gpt-4o",  # Using OpenRouter's model
         "messages": [{"role": "user", "content": prompt}]
     }
 
