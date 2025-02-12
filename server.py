@@ -1,5 +1,6 @@
 import os
 import requests
+import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -18,12 +19,12 @@ def before_request():
         return "Redirecting to HTTPS", 301
 
 # Load OpenRouter API Key
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_API_KEY = os.getenv("GEMINI_API_KEY")  # Using the same env variable name
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Check if API Key is Loaded
-if not GEMINI_API_KEY:
-    raise ValueError("❌ ERROR: Missing GEMINI_API_KEY. Please add it to your .env file.")
+if not OPENROUTER_API_KEY:
+    raise ValueError("❌ ERROR: Missing OPENROUTER_API_KEY. Please add it to your .env file.")
 
 # ✅ Homepage Route (Fix for 'Not Found' issue)
 @app.route("/")
@@ -35,27 +36,29 @@ def home():
 def test():
     return "This is a test route!"
 
-# ✅ Ensure This Route Exists with GET & POST Support
-@app.route("/gemini-api", methods=["POST", "GET"])
-def gemini_api():
+# ✅ OpenRouter AI Route (Fixing Not Found Issue)
+@app.route("/openrouter-api", methods=["POST", "GET"])
+def openrouter_api():
     if request.method == "GET":
-        return jsonify({"message": "✅ OpenRouter Gemini API is working! Use POST to send data."})
+        return jsonify({"message": "✅ OpenRouter API is working! Use POST to send data."})
 
     data = request.json
     prompt = data.get("prompt", "")
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {GEMINI_API_KEY}"
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://yourwebsite.com",  # Optional
+        "X-Title": "Algerian AI Lawyer"  # Optional
     }
 
     payload = {
-        "model": "google/gemini-2.0-pro-exp-02-05:free",
+        "model": "openai/gpt-4o",  # Use OpenRouter's correct model ID
         "messages": [{"role": "user", "content": prompt}]
     }
 
     try:
-        response = requests.post(GEMINI_API_URL, json=payload, headers=headers)
+        response = requests.post(OPENROUTER_API_URL, headers=headers, json=payload)
         response_json = response.json()
 
         if response.status_code == 200:
